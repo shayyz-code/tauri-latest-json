@@ -1,6 +1,6 @@
 [package]
 name = "tauri-latest-json"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Aung Min Khant"]
 edition = "2021"
 description = "Generate multi-platform Tauri updater latest.json from built installers"

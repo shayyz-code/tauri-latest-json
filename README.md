@@ -19,7 +19,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-tauri-latest-json = "0.1.0"
+tauri-latest-json = "0.1.1"
 ```
 
 ## 🚀 Usage
