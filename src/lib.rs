@@ -44,15 +44,12 @@ pub fn generate_latest_json_auto(
     notes: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let bundle_dir = detect_bundle_dir()?;
-    let package_json = Path::new("package.json");
     let tauri_conf_path = Path::new("src-tauri/tauri.conf.json");
 
     let public_key = read_public_key(tauri_conf_path)?;
     generate_latest_json(
         &bundle_dir,
-        package_json,
-        tauri_conf_path,
-        private_key_path,
+        &private_key_path,
         &public_key,
         download_url_base,
         notes,
@@ -62,8 +59,6 @@ pub fn generate_latest_json_auto(
 /// Generates `latest.json` from a given bundle dir and paths.
 pub fn generate_latest_json(
     bundle_dir: &Path,
-    package_json: &Path,
-    tauri_conf_path: &Path,
     private_key_path: &Path,
     public_key: &str,
     download_url_base: &str,
@@ -129,9 +124,6 @@ fn read_public_key(conf_path: &Path) -> Result<String, Box<dyn std::error::Error
 
 /// Reads `tauri.conf.json` and figures out the `bundle` directory.
 fn detect_bundle_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let conf_str = fs::read_to_string("src-tauri/tauri.conf.json")?;
-    let conf_json: Value = serde_json::from_str(&conf_str)?;
-
     let bundle_dir = Path::new("src-tauri")
         .join("target")
         .join("release")

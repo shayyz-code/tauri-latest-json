@@ -19,8 +19,26 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-tauri-latest-json = "0.1.1"
+tauri-latest-json = "0.1.2"
 ```
+
+---
+
+## 📦 Run the example
+
+```bash
+cargo run --example basic
+```
+
+If the paths are correct, you’ll get:
+
+```
+✅ latest.json generated successfully
+```
+
+And a `latest.json` file in your project root.
+
+---
 
 ## 🚀 Usage
 
@@ -29,13 +47,14 @@ use std::path::Path;
 use tauri_latest_json::generate_latest_json;
 
 fn main() {
-    generate_latest_json(
-        Path::new("src-tauri/target/release/bundle"),
-        Path::new("package.json"), // This will be ignored if Cargo.toml is used
-        Path::new("/home/user/.tauri/private.pem"),
-        "https://example.com/downloads",
-        "Bug fixes and performance improvements",
-    ).expect("Failed to generate latest.json");
+  let bundle_dir = Path::new("src-tauri/target/release/bundle");
+  let download_url = "https://example.com/downloads";
+  let release_notes = "Initial release";
+
+  match generate_latest_json_auto(bundle_dir, download_url, release_notes) {
+      Ok(_) => println!("✅ latest.json generated successfully"),
+      Err(e) => eprintln!("❌ Failed to generate latest.json: {e}"),
+  }
 }
 ```
 
