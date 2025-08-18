@@ -1,4 +1,3 @@
-use std::path::Path;
 use tauri_latest_json::generate_latest_json_auto;
 
 fn main() {

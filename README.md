@@ -18,7 +18,7 @@ This crate scans your Tauri `bundle` directory for installers, signs each one wi
 Add to `Cargo.toml`:
 
 ```toml
-[dependencies]
+[build-dependencies]
 tauri-latest-json = "0.1.5"
 ```
 
@@ -43,18 +43,21 @@ And a `latest.json` file in your project root.
 ## 🚀 Usage
 
 ```rust
-use std::path::Path;
-use tauri_latest_json::generate_latest_json;
+// build.rs
+use tauri_latest_json::generate_latest_json_auto;
 
 fn main() {
-  let download_url = "https://example.com/downloads";
-  let release_notes = "Initial release";
+    tauri_build::build();
 
-  match generate_latest_json_auto(download_url, release_notes) {
-    Ok(_) => println!("✅ latest.json generated successfully"),
-    Err(e) => eprintln!("❌ Failed to generate latest.json: {e}"),
-  }
+    let download_url = "https://example.com/downloads";
+    let release_notes = "Initial release";
+
+    match generate_latest_json_auto(download_url, release_notes) {
+        Ok(_) => println!("✅ latest.json generated successfully"),
+        Err(e) => eprintln!("❌ Failed to generate latest.json: {e}"),
+    }
 }
+
 ```
 
 After running, you'll get:
@@ -62,7 +65,7 @@ After running, you'll get:
 ```json
 {
   "version": "1.0.0",
-  "notes": "Bug fixes and performance improvements",
+  "notes": "Initial release",
   "pub_date": "2025-08-18T19:44:22Z",
   "platforms": {
     "windows-x86_64": {

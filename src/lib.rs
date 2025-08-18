@@ -209,6 +209,8 @@ fn detect_platform_key(filename: &str) -> &'static str {
         }
     } else if filename.ends_with(".AppImage") {
         "linux-x86_64"
+    } else if filename.ends_with(".tar.gz") {
+        "darwin-aarch64"
     } else {
         "unknown"
     }
