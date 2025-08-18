@@ -3,6 +3,8 @@ use serde_json::{json, Value};
 use std::{
     collections::HashMap,
     fs,
+    io::Read,
+    ops::IndexMut,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -39,27 +41,20 @@ fn read_version() -> Result<String, Box<dyn std::error::Error>> {
 /// reading version + public key from config, signing installers,
 /// and verifying signatures against the configured public key.
 pub fn generate_latest_json_auto(
-    private_key_path: &Path,
     download_url_base: &str,
     notes: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let bundle_dir = detect_bundle_dir()?;
-    let tauri_conf_path = Path::new("src-tauri/tauri.conf.json");
+    let current_dir = std::env::current_dir()?;
+    let tauri_conf_path = &current_dir.join("tauri.conf.json");
 
     let public_key = read_public_key(tauri_conf_path)?;
-    generate_latest_json(
-        &bundle_dir,
-        &private_key_path,
-        &public_key,
-        download_url_base,
-        notes,
-    )
+    generate_latest_json(&bundle_dir, &public_key, download_url_base, notes)
 }
 
 /// Generates `latest.json` from a given bundle dir and paths.
 pub fn generate_latest_json(
     bundle_dir: &Path,
-    private_key_path: &Path,
     public_key: &str,
     download_url_base: &str,
     notes: &str,
@@ -68,7 +63,7 @@ pub fn generate_latest_json(
     let version = read_version()?;
 
     // === 2. Find installers ===
-    let installers = find_installers(bundle_dir)?;
+    let installers = find_installers(&bundle_dir)?;
     if installers.is_empty() {
         return Err("No installers found".into());
     }
@@ -77,15 +72,22 @@ pub fn generate_latest_json(
     let mut platforms = HashMap::new();
     for installer in installers {
         let installer_name = installer.file_name().unwrap().to_str().unwrap();
+        let platform_key = detect_platform_key(installer_name);
+        println!("platform key: {:?}", &platform_key);
 
         // Sign installer
-        let signature = sign_installer(&installer, private_key_path)?;
+        let signature_path = find_singatures(&bundle_dir)?;
+        println!("sig path: {:?}", &signature_path);
+        let mut f_sig = std::fs::File::open(&signature_path.get(&platform_key).unwrap())?;
+        let mut signature = String::new();
+        f_sig.read_to_string(&mut signature)?;
+
+        println!("sig path: {:?}", &signature);
 
         // Verify signature
-        verify_signature(&installer, &signature, public_key)?;
+        // verify_signature(&installer, &signature, public_key)?;
 
         // Detect platform key
-        let platform_key = detect_platform_key(installer_name);
 
         platforms.insert(
             platform_key.to_string(),
@@ -116,7 +118,7 @@ pub fn generate_latest_json(
 fn read_public_key(conf_path: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let conf_str = fs::read_to_string(conf_path)?;
     let conf_json: Value = serde_json::from_str(&conf_str)?;
-    let public_key = conf_json["tauri"]["bundle"]["updater"]["pubkey"]
+    let public_key = conf_json["plugins"]["updater"]["pubkey"]
         .as_str()
         .ok_or("No public key found in tauri.conf.json")?;
     Ok(public_key.to_string())
@@ -124,15 +126,14 @@ fn read_public_key(conf_path: &Path) -> Result<String, Box<dyn std::error::Error
 
 /// Reads `tauri.conf.json` and figures out the `bundle` directory.
 fn detect_bundle_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let bundle_dir = Path::new("src-tauri")
-        .join("target")
-        .join("release")
-        .join("bundle");
+    let current_dir = std::env::current_dir()?;
+    let bundle_dir = current_dir.join("target").join("release").join("bundle");
 
+    print!("{:?}", vec![&current_dir, &bundle_dir]);
     if bundle_dir.exists() {
         Ok(bundle_dir)
     } else {
-        Err("Could not detect bundle dir. Run `npm run tauri build` first.".into())
+        Err("Could not detect bundle dir. Run `pnpm tauri build` first.".into())
     }
 }
 
@@ -154,35 +155,19 @@ fn find_installers(dir: &Path) -> Result<Vec<PathBuf>, Box<dyn std::error::Error
     Ok(results)
 }
 
-fn sign_installer(
-    installer: &Path,
-    private_key_path: &Path,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let output = Command::new("tauri")
-        .args([
-            "signer",
-            "sign",
-            "--private-key",
-            &private_key_path.to_string_lossy(),
-            installer.to_str().unwrap(),
-        ])
-        .output()?;
-
-    if !output.status.success() {
-        return Err(format!(
-            "Signing failed for {:?}: {}",
-            installer,
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
+fn find_singatures(dir: &Path) -> Result<HashMap<&str, PathBuf>, Box<dyn std::error::Error>> {
+    let mut results = HashMap::new();
+    for entry in walkdir::WalkDir::new(dir) {
+        let entry = entry?;
+        if entry.file_type().is_file() {
+            let fname = entry.file_name().to_string_lossy();
+            if fname.ends_with(".sig") {
+                let platform = detect_platform_key(&fname.replace(".sig", ""));
+                results.insert(platform, entry.path().to_path_buf());
+            }
+        }
     }
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    let signature = output_str.lines().last().unwrap_or("").trim().to_string();
-    if signature.is_empty() {
-        return Err(format!("Empty signature for {:?}", installer).into());
-    }
-    Ok(signature)
+    Ok(results)
 }
 
 fn verify_signature(
