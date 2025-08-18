@@ -4,7 +4,6 @@ use std::{
     collections::HashMap,
     fs,
     io::Read,
-    ops::IndexMut,
     path::{Path, PathBuf},
     process::Command,
 };

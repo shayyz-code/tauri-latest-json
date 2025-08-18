@@ -6,10 +6,9 @@ This crate scans your Tauri `bundle` directory for installers, signs each one wi
 
 ## ✨ Features
 
-- Supports `.msi`, `.exe`, `.dmg` (Intel & ARM), and `.AppImage`
+- Supports `.msi`, `.exe`, `.dmg` (Intel & ARM), `tar.gz` (ARM) and `.AppImage`
 - Automatically detects platform from installer filename
-- Signs each installer using `tauri signer`
-- Reads version from `package.json` (JavaScript Tauri) or `Cargo.toml` (Rust-only Tauri)
+- Reads version from `package.json` or `Cargo.toml`
 - Outputs a fully valid `latest.json` with multiple platforms
 - Easy to integrate into CI/CD pipelines
 
@@ -18,8 +17,8 @@ This crate scans your Tauri `bundle` directory for installers, signs each one wi
 Add to `Cargo.toml`:
 
 ```toml
-[build-dependencies]
-tauri-latest-json = "0.1.5"
+[dependencies]
+tauri-latest-json = "0.2.0"
 ```
 
 ---
@@ -43,12 +42,10 @@ And a `latest.json` file in your project root.
 ## 🚀 Usage
 
 ```rust
-// build.rs
+// src/bin/latest_json.rs
 use tauri_latest_json::generate_latest_json_auto;
 
 fn main() {
-    tauri_build::build();
-
     let download_url = "https://example.com/downloads";
     let release_notes = "Initial release";
 
@@ -60,13 +57,23 @@ fn main() {
 
 ```
 
-After running, you'll get:
+```json
+// package.json
+
+  "scripts": {
+    ...
+    "tauri:build": "pnpm tauri build && cd src-tauri && cargo run --bin latest_json"
+  },
+
+```
+
+After running `pnpm tauri:build`, you'll get:
 
 ```json
 {
   "version": "1.0.0",
   "notes": "Initial release",
-  "pub_date": "2025-08-18T19:44:22Z",
+  "pub_date": "2025-08-19T19:44:22Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "base64-signature-here",
@@ -97,17 +104,16 @@ After running, you'll get:
 
 ## 🛠 Platform detection
 
-| File Extension | Platform Key     |
-| -------------- | ---------------- |
-| `.msi`, `.exe` | `windows-x86_64` |
-| `.dmg` (Intel) | `darwin-x86_64`  |
-| `.dmg` (ARM)   | `darwin-aarch64` |
-| `.AppImage`    | `linux-x86_64`   |
+| File Extension  | Platform Key     |
+| --------------- | ---------------- |
+| `.msi`, `.exe`  | `windows-x86_64` |
+| `.dmg` (Intel)  | `darwin-x86_64`  |
+| `.dmg` (ARM)    | `darwin-aarch64` |
+| `.tar.gz` (ARM) | `darwin-aarch64` |
+| `.AppImage`     | `linux-x86_64`   |
 
 ## 📄 License
 
 Licensed under the MIT License — see [LICENSE](LICENSE) for details.
 
-## 💓 Contributing Rust Community by
-
-[Shayy](https://www.codewithshayy.online/me)
+## 🦀 Contributing Rust Community by [Shayy](https://www.codewithshayy.online/me)
