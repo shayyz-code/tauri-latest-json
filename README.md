@@ -19,7 +19,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-tauri-latest-json = "0.1.2"
+tauri-latest-json = "0.1.5"
 ```
 
 ---
@@ -47,13 +47,12 @@ use std::path::Path;
 use tauri_latest_json::generate_latest_json;
 
 fn main() {
-  let bundle_dir = Path::new("src-tauri/target/release/bundle");
   let download_url = "https://example.com/downloads";
   let release_notes = "Initial release";
 
-  match generate_latest_json_auto(bundle_dir, download_url, release_notes) {
-      Ok(_) => println!("✅ latest.json generated successfully"),
-      Err(e) => eprintln!("❌ Failed to generate latest.json: {e}"),
+  match generate_latest_json_auto(download_url, release_notes) {
+    Ok(_) => println!("✅ latest.json generated successfully"),
+    Err(e) => eprintln!("❌ Failed to generate latest.json: {e}"),
   }
 }
 ```
@@ -64,7 +63,7 @@ After running, you'll get:
 {
   "version": "1.0.0",
   "notes": "Bug fixes and performance improvements",
-  "pub_date": "2025-08-10T14:15:22Z",
+  "pub_date": "2025-08-18T19:44:22Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "base64-signature-here",
@@ -84,16 +83,13 @@ After running, you'll get:
 
 ## 🔑 Requirements
 
-- **Tauri CLI** installed:
-
-  ```bash
-  cargo install tauri-cli
-  ```
+- A valid Tauri updater setup:
+  See on [Tauri Updater](https://v2.tauri.app/plugin/updater/)
 
 - A valid Tauri private key:
 
   ```bash
-  tauri signer generate -o ~/.tauri/private.pem
+  pnpm tauri signer generate -w ~/.tauri/myapp.key
   ```
 
 ## 🛠 Platform detection
@@ -108,3 +104,7 @@ After running, you'll get:
 ## 📄 License
 
 Licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+## 💓 Contributing Rust Community by
+
+[Shayy](https://www.codewithshayy.online/me)
