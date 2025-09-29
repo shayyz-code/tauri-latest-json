@@ -18,26 +18,14 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-tauri-latest-json = "0.2.0"
+tauri-latest-json = "0.2.1"
 ```
 
----
-
-## 📦 Run the example
+or
 
 ```bash
-cargo run --example basic
+cargo add tauri-latest-json
 ```
-
-If the paths are correct, you’ll get:
-
-```
-✅ latest.json generated successfully
-```
-
-And a `latest.json` file in your project root.
-
----
 
 ## 🚀 Usage
 
@@ -102,6 +90,20 @@ After running `pnpm tauri:build`, you'll get:
   pnpm tauri signer generate -w ~/.tauri/myapp.key
   ```
 
+## 📦 Run the example
+
+```bash
+cargo run --example basic
+```
+
+If the paths are correct, you’ll get:
+
+```
+✅ latest.json generated successfully
+```
+
+And a `latest.json` file in your project root.
+
 ## 🛠 Platform detection
 
 | File Extension  | Platform Key     |
@@ -116,4 +118,4 @@ After running `pnpm tauri:build`, you'll get:
 
 Licensed under the MIT License — see [LICENSE](LICENSE) for details.
 
-## 🦀 Contributing Rust Community by [Shayy](https://www.codewithshayy.online/me)
+🦀 Contributing Rust Community by [Shayy](https://www.codewithshayy.online/me)
