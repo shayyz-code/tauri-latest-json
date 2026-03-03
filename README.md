@@ -10,6 +10,7 @@ Generate a `latest.json` file for [Tauri](https://v2.tauri.app/) auto-updates, s
 This crate scans your Tauri `bundle` directory for installers and outputs a valid `latest.json` for the [Tauri Updater](https://v2.tauri.app/plugin/updater/).
 
 ## Features
+
 - Detects installers: `.msi`, `.exe`, `.dmg` (Intel/ARM), `.AppImage`, `.deb`, `.rpm`, `.tar.gz`
 - Auto-detects platform keys from filenames
 - Reads version from `package.json` or `Cargo.toml`
@@ -17,11 +18,12 @@ This crate scans your Tauri `bundle` directory for installers and outputs a vali
 - Works as both a library and a CLI
 
 ## Install
+
 Library:
 
 ```toml
 [dependencies]
-tauri-latest-json = "0.2.1"
+tauri-latest-json = "0.2.2"
 ```
 
 CLI:
@@ -69,6 +71,7 @@ If the paths are correct, you’ll see:
 ```
 
 ## Requirements
+
 - Valid Tauri updater configuration (see the [Tauri Updater docs](https://v2.tauri.app/plugin/updater/))
 - A Tauri signing key
 
@@ -78,16 +81,18 @@ pnpm tauri signer generate -w ~/.tauri/myapp.key
 
 ## Platform Detection
 
-| File Extension            | Platform Key       |
-| ------------------------- | ------------------ |
-| `.msi`, `.exe`            | `windows-x86_64`   |
-| `.dmg` (Intel)            | `darwin-x86_64`    |
-| `.dmg` (ARM)              | `darwin-aarch64`   |
-| `.AppImage`, `.deb`, `.rpm`, `.tar.gz` (x64) | `linux-x86_64`    |
-| `.AppImage`, `.deb`, `.rpm`, `.tar.gz` (ARM) | `linux-aarch64`   |
+| File Extension                               | Platform Key     |
+| -------------------------------------------- | ---------------- |
+| `.msi`, `.exe`                               | `windows-x86_64` |
+| `.dmg` (Intel)                               | `darwin-x86_64`  |
+| `.dmg` (ARM)                                 | `darwin-aarch64` |
+| `.AppImage`, `.deb`, `.rpm`, `.tar.gz` (x64) | `linux-x86_64`   |
+| `.AppImage`, `.deb`, `.rpm`, `.tar.gz` (ARM) | `linux-aarch64`  |
 
 ## Contributing
+
 See [CONTRIBUTING.md](CONTRIBUTING.md). Please also read our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
+
 MIT — see [LICENSE](LICENSE).
