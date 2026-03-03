@@ -23,7 +23,7 @@ Library:
 
 ```toml
 [dependencies]
-tauri-latest-json = "0.2.2"
+tauri-latest-json = "0.2.4"
 ```
 
 CLI:
