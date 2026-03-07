@@ -14,6 +14,7 @@ Please make sure to read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Optional:
   - `cargo fmt --all`
   - `cargo clippy -- -D warnings`
+  - `cargo run --features verify-signature -- <download_url_base> <notes>`
 
 ## Project Layout
 

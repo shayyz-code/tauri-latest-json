@@ -38,13 +38,24 @@ cargo install tauri-latest-json
 tauri-latest-json <download_url_base> <notes>
 ```
 
+Notes can contain spaces without quotes; all remaining args are combined.
+
 Example:
 
 ```bash
-tauri-latest-json https://example.com/downloads "Initial release"
+tauri-latest-json https://example.com/downloads Initial release with details
 ```
 
 `latest.json` is written to the current working directory.
+
+### Optional signature verification
+
+Enable compile-time verification of signatures using the Tauri CLI:
+
+```bash
+cargo install tauri-cli
+cargo run --features verify-signature -- <download_url_base> <notes>
+```
 
 ## Library Usage
 

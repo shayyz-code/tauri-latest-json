@@ -4,3 +4,4 @@ latest.json
 tauri.conf.json
 
 .env*
+.DS_Store

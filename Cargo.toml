@@ -1,6 +1,6 @@
 [package]
 name = "tauri-latest-json"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Aung Min Khant <aungminkhant.shay@gmail.com>"]
 edition = "2021"
 description = "Generate multi-platform Tauri updater latest.json from built installers"
@@ -8,9 +8,16 @@ license = "MIT"
 repository = "https://github.com/shayyz-code/tauri-latest-json"
 readme = "README.md"
 keywords = ["tauri", "updater"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = [".env", ".env.*"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 walkdir = "2.5"
+toml = "0.8"
+
+[features]
+default = []
+verify-signature = []

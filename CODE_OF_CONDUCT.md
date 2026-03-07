@@ -38,6 +38,24 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be repor
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 
+## Reporting Guidelines
+
+When reporting, please include:
+- What happened, and when
+- Where it happened (repository, issue/PR link, or other venue)
+- Who was involved, if known
+- Any additional context or supporting evidence (screenshots, links)
+
+Reports will be acknowledged within 5 business days. We will communicate the next steps and expected timelines as appropriate.
+
+## Confidentiality and Non‑Retaliation
+
+We will keep reporters’ identities confidential to the extent possible and consistent with a thorough investigation. Retaliation against anyone who reports in good faith or participates in an investigation is not tolerated.
+
+## Appeals
+
+If you disagree with an action taken as a result of this Code of Conduct, you may appeal by replying to the original decision communication and providing any new or clarifying information for review.
+
 ## Enforcement Guidelines
 
 Community leaders will follow these Community Impact Guidelines in determining the consequences for any action they deem in violation of this Code of Conduct:

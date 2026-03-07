@@ -7,9 +7,9 @@ fn main() {
     // 3. Either package.json or Cargo.toml with a version field
 
     let download_url = "https://example.com/downloads";
-    let release_notes = "Initial release";
+    let notes = "Initial release";
 
-    match generate_latest_json_auto(download_url, release_notes) {
+    match generate_latest_json_auto(download_url, notes) {
         Ok(_) => println!("✅ latest.json generated successfully"),
         Err(e) => eprintln!("❌ Failed to generate latest.json: {e}"),
     }

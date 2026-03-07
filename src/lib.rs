@@ -1,11 +1,12 @@
 use chrono::Utc;
 use serde_json::{json, Value};
+#[cfg(feature = "verify-signature")]
+use std::process::Command;
 use std::{
     collections::HashMap,
     fs,
     io::Read,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 fn read_version() -> Result<String, Box<dyn std::error::Error>> {
@@ -14,7 +15,6 @@ fn read_version() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Error>> {
-    // Try package.json first
     let pkg_path = base.join("package.json");
     if pkg_path.exists() {
         let pkg_str = fs::read_to_string(&pkg_path)?;
@@ -24,23 +24,14 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
         }
     }
 
-    // Fallback to Cargo.toml
     let cargo_path = base.join("Cargo.toml");
     if cargo_path.exists() {
         let cargo_str = fs::read_to_string(&cargo_path)?;
-        let mut in_package = false;
-        for raw_line in cargo_str.lines() {
-            let line = raw_line.trim();
-            if line.starts_with('[') && line.ends_with(']') {
-                in_package = line == "[package]";
-                continue;
-            }
-            if in_package && line.starts_with("version") {
-                if let Some(eq_pos) = line.find('=') {
-                    let version = line[eq_pos + 1..].trim().trim_matches('"').to_string();
-                    if !version.is_empty() {
-                        return Ok(version);
-                    }
+        let value: toml::Value = toml::from_str(&cargo_str)?;
+        if let Some(pkg) = value.get("package") {
+            if let Some(ver) = pkg.get("version").and_then(|v| v.as_str()) {
+                if !ver.is_empty() {
+                    return Ok(ver.to_string());
                 }
             }
         }
@@ -70,22 +61,24 @@ pub fn generate_latest_json(
     download_url_base: &str,
     notes: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // === 1. Read version from Cargo.toml ===
     let version = read_version()?;
 
-    // === 2. Find installers ===
     let installers = find_installers(&bundle_dir)?;
     if installers.is_empty() {
         return Err("No installers found".into());
     }
 
-    // === 3. Build platforms map ===
     let mut platforms = HashMap::new();
     for installer in installers {
-        let installer_name = installer.file_name().unwrap().to_str().unwrap();
-        let platform_key = detect_platform_key(installer_name);
+        let installer_name = match installer
+            .file_name()
+            .and_then(|s| s.to_str().map(|s| s.to_string()))
+        {
+            Some(s) => s,
+            None => continue,
+        };
+        let platform_key = detect_platform_key(installer_name.as_str());
 
-        // Sign installer
         let signature_path = find_signatures(&bundle_dir)?;
         let sig_path = signature_path
             .get(&platform_key)
@@ -94,10 +87,14 @@ pub fn generate_latest_json(
         let mut signature = String::new();
         f_sig.read_to_string(&mut signature)?;
 
-        // Verify signature
-        // verify_signature(&installer, &signature, public_key)?;
-
-        // Detect platform key
+        #[cfg(feature = "verify-signature")]
+        {
+            verify_signature(&installer, &signature, public_key)?;
+        }
+        #[cfg(not(feature = "verify-signature"))]
+        {
+            let _ = &public_key;
+        }
 
         platforms.insert(
             platform_key.to_string(),
@@ -108,7 +105,6 @@ pub fn generate_latest_json(
         );
     }
 
-    // === 4. Generate latest.json ===
     let latest_json = json!({
         "version": version,
         "notes": notes,
@@ -223,18 +219,22 @@ fn detect_tauri_conf_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     Err("Could not find tauri.conf.json. Provide it at project root or src-tauri/.".into())
 }
 
+#[cfg(feature = "verify-signature")]
 fn verify_signature(
     installer: &Path,
     signature: &str,
     public_key: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let installer_str = installer
+        .to_str()
+        .ok_or("Installer path is not valid UTF-8")?;
     let output = Command::new("tauri")
         .args([
             "signer",
             "verify",
             "--public-key",
             public_key,
-            installer.to_str().unwrap(),
+            installer_str,
             signature,
         ])
         .output()?;

@@ -10,13 +10,12 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let notes = match args.next() {
-        Some(v) => v,
-        None => {
-            eprintln!("Usage: tauri-latest-json <download_url_base> <notes>");
-            std::process::exit(1);
-        }
-    };
+    let rest: Vec<String> = args.collect();
+    if rest.is_empty() {
+        eprintln!("Usage: tauri-latest-json <download_url_base> <notes>");
+        std::process::exit(1);
+    }
+    let notes = rest.join(" ");
 
     match generate_latest_json_auto(&download_url, &notes) {
         Ok(()) => println!("latest.json generated successfully"),
