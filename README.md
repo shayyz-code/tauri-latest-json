@@ -7,7 +7,7 @@
 
 Generate a `latest.json` file for [Tauri](https://v2.tauri.app/) auto-updates, supporting multi-platform builds (Windows, macOS Intel/ARM, Linux).
 
-This crate scans your Tauri `bundle` directory for installers and outputs a valid `latest.json` for the [Tauri Updater](https://v2.tauri.app/plugin/updater/).
+This CLI scans your Tauri `bundle` directory for installers and outputs a valid `latest.json` for the [Tauri Updater](https://v2.tauri.app/plugin/updater/).
 
 ## Features
 
@@ -15,18 +15,9 @@ This crate scans your Tauri `bundle` directory for installers and outputs a vali
 - Auto-detects platform keys from filenames
 - Reads version from `package.json` or `Cargo.toml`
 - Generates a single multi-platform `latest.json`
-- Works as both a library and a CLI
+- CLI-only tool (not intended as a Rust library dependency)
 
 ## Install
-
-Library:
-
-```toml
-[dependencies]
-tauri-latest-json = "0.2.4"
-```
-
-CLI:
 
 ```bash
 cargo install tauri-latest-json
@@ -36,6 +27,13 @@ cargo install tauri-latest-json
 
 ```bash
 tauri-latest-json <download_url_base> <notes>
+```
+
+```bash
+tauri-latest-json help
+tauri-latest-json version
+tauri-latest-json --help
+tauri-latest-json --version
 ```
 
 Notes can contain spaces without quotes; all remaining args are combined.
@@ -57,29 +55,7 @@ cargo install tauri-cli
 cargo run --features verify-signature -- <download_url_base> <notes>
 ```
 
-## Library Usage
-
-```rust
-use tauri_latest_json::generate_latest_json_auto;
-
-fn main() {
-    let download_url = "https://example.com/downloads";
-    let notes = "Initial release";
-    generate_latest_json_auto(download_url, notes).unwrap();
-}
-```
-
-## Example
-
-```bash
-cargo run --example basic
-```
-
-If the paths are correct, you’ll see:
-
-```
-✅ latest.json generated successfully
-```
+If the paths are correct, you’ll see `latest.json generated successfully`.
 
 ## Requirements
 
@@ -99,6 +75,31 @@ pnpm tauri signer generate -w ~/.tauri/myapp.key
 | `.dmg` (ARM)                                 | `darwin-aarch64` |
 | `.AppImage`, `.deb`, `.rpm`, `.tar.gz` (x64) | `linux-x86_64`   |
 | `.AppImage`, `.deb`, `.rpm`, `.tar.gz` (ARM) | `linux-aarch64`  |
+
+## Specs
+
+Behavior specs and acceptance criteria are documented in [SPEC.md](SPEC.md).
+
+## Testing
+
+Run the verification suite:
+
+```bash
+make verify
+```
+
+Manual equivalent:
+
+```bash
+cargo test
+cargo test --all-features
+cargo check --features verify-signature
+./scripts/smoke-cli.sh
+./scripts/smoke-generate.sh
+./scripts/smoke-generate-current-conf.sh
+```
+
+See release notes in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 

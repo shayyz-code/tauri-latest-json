@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run verification suite
+        run: bash scripts/test.sh
+
+      - name: Run CLI smoke checks
+        run: bash scripts/smoke-cli.sh
+
+      - name: Run generation smoke check
+        run: bash scripts/smoke-generate.sh
+
+      - name: Run generation smoke check with current tauri.conf.json
+        run: bash scripts/smoke-generate-current-conf.sh
