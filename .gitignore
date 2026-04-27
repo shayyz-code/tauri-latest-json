@@ -5,3 +5,4 @@ tauri.conf.json
 
 .env*
 .DS_Store
+real-tauri-app/

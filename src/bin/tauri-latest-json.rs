@@ -90,6 +90,30 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
         }
     }
 
+    let tauri_conf_path = base.join("tauri.conf.json");
+    if tauri_conf_path.exists() {
+        let conf_str = fs::read_to_string(&tauri_conf_path)?;
+        let conf_json: serde_json::Value = serde_json::from_str(&conf_str)?;
+        if let Some(ver) = conf_json["package"]["version"].as_str() {
+            return Ok(ver.to_string());
+        }
+        if let Some(ver) = conf_json["version"].as_str() {
+            return Ok(ver.to_string());
+        }
+    }
+
+    let src_tauri_conf_path = base.join("src-tauri").join("tauri.conf.json");
+    if src_tauri_conf_path.exists() {
+        let conf_str = fs::read_to_string(&src_tauri_conf_path)?;
+        let conf_json: serde_json::Value = serde_json::from_str(&conf_str)?;
+        if let Some(ver) = conf_json["package"]["version"].as_str() {
+            return Ok(ver.to_string());
+        }
+        if let Some(ver) = conf_json["version"].as_str() {
+            return Ok(ver.to_string());
+        }
+    }
+
     let cargo_path = base.join("Cargo.toml");
     if cargo_path.exists() {
         let cargo_str = fs::read_to_string(&cargo_path)?;
@@ -103,7 +127,20 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
         }
     }
 
-    Err("Could not find version in package.json or Cargo.toml".into())
+    let src_tauri_cargo_path = base.join("src-tauri").join("Cargo.toml");
+    if src_tauri_cargo_path.exists() {
+        let cargo_str = fs::read_to_string(&src_tauri_cargo_path)?;
+        let value: toml::Value = toml::from_str(&cargo_str)?;
+        if let Some(pkg) = value.get("package") {
+            if let Some(ver) = pkg.get("version").and_then(|v| v.as_str()) {
+                if !ver.is_empty() {
+                    return Ok(ver.to_string());
+                }
+            }
+        }
+    }
+
+    Err("Could not find version in package.json, Cargo.toml, or src-tauri/Cargo.toml".into())
 }
 
 fn generate_latest_json_auto(
@@ -141,14 +178,14 @@ fn generate_latest_json_for_project(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let version = read_version_from_dir(project_dir)?;
 
-    let installers = find_installers(bundle_dir)?;
+    let installers = find_installers_by_platform(bundle_dir)?;
     if installers.is_empty() {
         return Err("No installers found".into());
     }
 
     let signature_paths = find_signatures(bundle_dir)?;
     let mut platforms = HashMap::new();
-    for installer in installers {
+    for (platform_key, installer) in installers {
         let installer_name = match installer
             .file_name()
             .and_then(|s| s.to_str().map(|s| s.to_string()))
@@ -156,12 +193,22 @@ fn generate_latest_json_for_project(
             Some(s) => s,
             None => continue,
         };
-        let platform_key = detect_platform_key(installer_name.as_str());
 
-        let sig_path = signature_paths
-            .get(platform_key)
-            .ok_or_else(|| format!("Signature not found for platform {}", platform_key))?;
-        let mut f_sig = std::fs::File::open(sig_path)?;
+        let sig_path = signature_paths.get(platform_key.as_str());
+
+        if sig_path.is_none() {
+            if installer_name.ends_with(".dmg") {
+                eprintln!("Warning: No signature found for DMG on platform {}. Tauri doesn't generate .sig files for DMG, so it will be skipped.", platform_key);
+            } else {
+                eprintln!(
+                    "Warning: No signature found for platform {}. Skipping.",
+                    platform_key
+                );
+            }
+            continue;
+        }
+
+        let mut f_sig = std::fs::File::open(sig_path.unwrap())?;
         let mut signature = String::new();
         f_sig.read_to_string(&mut signature)?;
 
@@ -175,9 +222,9 @@ fn generate_latest_json_for_project(
         }
 
         platforms.insert(
-            platform_key.to_string(),
+            platform_key,
             json!({
-                "signature": signature,
+                "signature": signature.trim(),
                 "url": format!("{}/{}", download_url_base, installer_name)
             }),
         );
@@ -199,10 +246,18 @@ fn generate_latest_json_for_project(
 fn read_public_key(conf_path: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let conf_str = fs::read_to_string(conf_path)?;
     let conf_json: Value = serde_json::from_str(&conf_str)?;
-    let public_key = conf_json["plugins"]["updater"]["pubkey"]
-        .as_str()
-        .ok_or("No public key found in tauri.conf.json")?;
-    Ok(public_key.to_string())
+
+    // Try Tauri 2.0 path: plugins > updater > pubkey
+    if let Some(pubkey) = conf_json["plugins"]["updater"]["pubkey"].as_str() {
+        return Ok(pubkey.to_string());
+    }
+
+    // Try Tauri 1.0 path: tauri > updater > pubkey
+    if let Some(pubkey) = conf_json["tauri"]["updater"]["pubkey"].as_str() {
+        return Ok(pubkey.to_string());
+    }
+
+    Err("No public key found in tauri.conf.json (checked plugins.updater.pubkey and tauri.updater.pubkey)".into())
 }
 
 fn detect_bundle_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -256,6 +311,71 @@ fn find_installers(dir: &Path) -> Result<Vec<PathBuf>, Box<dyn std::error::Error
         }
     }
     Ok(results)
+}
+
+fn installer_priority(platform: &str, filename: &str) -> u8 {
+    let lower = filename.to_ascii_lowercase();
+    match platform {
+        "windows-x86_64" => {
+            if lower.ends_with(".msi") {
+                30
+            } else if lower.ends_with(".exe") {
+                20
+            } else {
+                10
+            }
+        }
+        "darwin-aarch64" | "darwin-x86_64" => {
+            if lower.ends_with(".app.tar.gz") {
+                40
+            } else if lower.ends_with(".dmg") {
+                10
+            } else {
+                5
+            }
+        }
+        "linux-aarch64" | "linux-x86_64" => {
+            if lower.ends_with(".appimage") {
+                40
+            } else if lower.ends_with(".deb") {
+                30
+            } else if lower.ends_with(".rpm") {
+                20
+            } else if lower.ends_with(".tar.gz") {
+                10
+            } else {
+                5
+            }
+        }
+        _ => 0,
+    }
+}
+
+fn find_installers_by_platform(
+    dir: &Path,
+) -> Result<HashMap<String, PathBuf>, Box<dyn std::error::Error>> {
+    let installers = find_installers(dir)?;
+    let mut selected: HashMap<String, (PathBuf, u8)> = HashMap::new();
+
+    for installer in installers {
+        let installer_name = match installer.file_name().and_then(|s| s.to_str()) {
+            Some(s) => s.to_string(),
+            None => continue,
+        };
+        let platform = detect_platform_key(&installer_name).to_string();
+        if platform == "unknown" {
+            continue;
+        }
+        let priority = installer_priority(&platform, &installer_name);
+        match selected.get(&platform) {
+            Some((_, existing_priority)) if *existing_priority >= priority => {}
+            _ => {
+                selected.insert(platform, (installer, priority));
+            }
+        }
+    }
+
+    Ok(selected.into_iter().map(|(k, (v, _))| (k, v)).collect())
 }
 
 fn find_signatures(
@@ -329,7 +449,7 @@ fn detect_platform_key(filename: &str) -> &'static str {
     let lower = filename.to_ascii_lowercase();
     if lower.ends_with(".msi") || lower.ends_with(".exe") {
         "windows-x86_64"
-    } else if lower.ends_with(".dmg") {
+    } else if lower.ends_with(".app.tar.gz") || lower.ends_with(".dmg") {
         if lower.contains("aarch64") || lower.contains("arm64") {
             "darwin-aarch64"
         } else {
@@ -453,6 +573,14 @@ mod tests {
         assert_eq!(detect_platform_key("app_0.1.0_x64.dmg"), "darwin-x86_64");
         assert_eq!(detect_platform_key("app_0.1.0_arm64.dmg"), "darwin-aarch64");
         assert_eq!(
+            detect_platform_key("app_0.1.0_aarch64.app.tar.gz"),
+            "darwin-aarch64"
+        );
+        assert_eq!(
+            detect_platform_key("app_0.1.0_x64.app.tar.gz"),
+            "darwin-x86_64"
+        );
+        assert_eq!(
             detect_platform_key("AppImage-0.1.0-x86_64.AppImage"),
             "linux-x86_64"
         );
@@ -505,6 +633,23 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
+    #[test]
+    fn test_read_version_from_src_tauri_cargo_toml() {
+        let dir = make_temp_dir();
+        create_dir_all(dir.join("src-tauri")).unwrap();
+        {
+            let mut f = File::create(dir.join("src-tauri").join("Cargo.toml")).unwrap();
+            writeln!(
+                f,
+                "[package]\nname = \"dummy\"\nversion = \"3.4.5\"\n\n[dependencies]\n"
+            )
+            .unwrap();
+        }
+        let v = read_version_from_dir(&dir).unwrap();
+        assert_eq!(v, "3.4.5");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     #[cfg(not(feature = "verify-signature"))]
     #[test]
     fn test_generate_latest_json_writes_expected_structure() {
@@ -552,6 +697,47 @@ mod tests {
         assert_eq!(
             latest["platforms"]["darwin-aarch64"]["url"],
             "https://example.com/downloads/app_1.2.3_arm64.dmg"
+        );
+        assert_eq!(
+            latest["platforms"]["darwin-aarch64"]["signature"],
+            "mac-signature"
+        );
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(not(feature = "verify-signature"))]
+    #[test]
+    fn test_generate_latest_json_prefers_mac_updater_archive_over_dmg() {
+        let dir = make_temp_dir();
+        let bundle_dir = dir.join("target").join("release").join("bundle");
+        write_file(
+            &dir.join("package.json"),
+            r#"{"name":"dummy","version":"1.2.3"}"#,
+        );
+        write_file(&bundle_dir.join("app_1.2.3_arm64.dmg"), "mac installer");
+        write_file(
+            &bundle_dir.join("app_1.2.3_arm64.app.tar.gz"),
+            "mac updater archive",
+        );
+        write_file(
+            &bundle_dir.join("app_1.2.3_arm64.app.tar.gz.sig"),
+            "mac-signature",
+        );
+
+        generate_latest_json_for_project(
+            &bundle_dir,
+            "unused-public-key",
+            "https://example.com/downloads",
+            "release notes",
+            &dir,
+        )
+        .unwrap();
+
+        let latest_json = std::fs::read_to_string(dir.join("latest.json")).unwrap();
+        let latest: Value = serde_json::from_str(&latest_json).unwrap();
+        assert_eq!(
+            latest["platforms"]["darwin-aarch64"]["url"],
+            "https://example.com/downloads/app_1.2.3_arm64.app.tar.gz"
         );
         assert_eq!(
             latest["platforms"]["darwin-aarch64"]["signature"],

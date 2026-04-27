@@ -34,11 +34,14 @@ Please make sure to read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Include reproduction steps if fixing a bug.
 - Ensure the full verification set passes:
   - `make verify`
+  - `make clippy`
+  - optional real app validation: `make smoke-real-app`
   - or run scripts manually:
   - `./scripts/test.sh`
   - `./scripts/smoke-cli.sh`
   - `./scripts/smoke-generate.sh`
   - `./scripts/smoke-generate-current-conf.sh`
+  - `REAL_APP_DIR=/path/to/your-app ./scripts/smoke-real-tauri-app.sh`
 
 ## Release Process
 
