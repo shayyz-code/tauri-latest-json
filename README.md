@@ -1,34 +1,53 @@
-# tauri-latest-json
+<h1 align="center">tauri-latest-json</h1>
 
-[![Crates.io](https://img.shields.io/crates/v/tauri-latest-json.svg)](https://crates.io/crates/tauri-latest-json)
-[![docs.rs](https://docs.rs/tauri-latest-json/badge.svg)](https://docs.rs/tauri-latest-json)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Crates.io](https://img.shields.io/crates/d/tauri-latest-json.svg)](https://crates.io/crates/tauri-latest-json)
+<p align="center">
+    <a href="https://crates.io/crates/tauri-latest-json">
+        <img src="https://img.shields.io/crates/v/tauri-latest-json.svg" alt="Crates.io" />
+    </a>
+    <a href="https://docs.rs/tauri-latest-json">
+        <img src="https://docs.rs/tauri-latest-json/badge.svg" alt="docs.rs" />
+    </a>
+    <a href="LICENSE">
+        <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+    </a>
+    <a href="https://crates.io/crates/tauri-latest-json">
+        <img src="https://img.shields.io/crates/d/tauri-latest-json.svg" alt="Crates.io" />
+    </a>
+</p>
 
-Generate a `latest.json` file for [Tauri](https://v2.tauri.app/) auto-updates, supporting multi-platform builds (Windows, macOS Intel/ARM, Linux).
-
-This CLI scans your Tauri `bundle` directory for installers and outputs a valid `latest.json` for the [Tauri Updater](https://v2.tauri.app/plugin/updater/).
+<p align="center">
+Generate a <code>latest.json</code> file for <a href="https://v2.tauri.app/">Tauri</a> auto-updates, supporting multi-platform builds (Windows, macOS Intel/ARM, Linux). This CLI scans your Tauri <code>bundle</code> directory for installers and outputs a valid <code>latest.json</code> for the <a href="https://v2.tauri.app/plugin/updater/">Tauri Updater</a>.
+</p>
 
 ## Features
 
 - **Multi-platform detection**: Automatically finds `.msi`, `.exe`, `.dmg` (Intel/ARM), `.AppImage`, `.deb`, `.rpm`, and `.tar.gz` artifacts.
+- **Interactive Mode**: Prompts for missing information (download URL, release notes) if arguments aren't provided.
 - **Smart platform mapping**: Maps artifacts to their respective Tauri platform keys (`windows-x86_64`, `darwin-aarch64`, etc.).
 - **Flexible Versioning**: Reads version from `package.json`, `Cargo.toml`, or `tauri.conf.json` (supports both Tauri 1.0 and 2.0 structures).
 - **Root-run friendly**: Can be run from your project root or `src-tauri` directory.
 - **Graceful Signature Handling**: Automatically skips artifacts without `.sig` files (like `.dmg` which Tauri doesn't sign for updates) with a helpful warning.
 - **Verification Support**: Optional built-in signature verification against your public key.
 
-## Quick Start
-
-### 1. Install
+## Installation
 
 ```bash
 cargo install tauri-latest-json
 ```
 
-### 2. Run from your project root
+## Usage
 
-Navigate to your Tauri project root and run:
+### 1. Simple Interactive Mode (Recommended)
+
+Just run the command from your Tauri project root. It will prompt you for the download URL and release notes:
+
+```bash
+tauri-latest-json
+```
+
+### 2. Command Line Arguments
+
+Provide the download URL base and release notes directly:
 
 ```bash
 tauri-latest-json <download_url_base> <notes...>
@@ -37,30 +56,23 @@ tauri-latest-json <download_url_base> <notes...>
 **Example:**
 
 ```bash
-tauri-latest-json https://github.com/user/repo/releases/download/v0.3.1 "Improved updater support"
+tauri-latest-json https://github.com/user/repo/releases/download/v0.4.0 "Fixed security vulnerabilities and improved performance."
 ```
 
-This will:
+### 3. What happens next?
 
-1. Detect your app version from your project files.
-2. Locate built artifacts in your `target/` directory.
-3. Match installers with their `.sig` files.
-4. Generate a `latest.json` in your current directory.
+The tool will:
+
+1. **Detect Version**: Scans `package.json`, `Cargo.toml`, or `tauri.conf.json`.
+2. **Find Artifacts**: Searches `target/release/bundle` for installers.
+3. **Verify Signatures**: Matches installers with their `.sig` files (skipping `.dmg` as expected).
+4. **Generate Output**: Creates a `latest.json` file in your current directory, ready for upload.
 
 ## CLI Commands
 
 ```bash
 tauri-latest-json help       # Show usage help
 tauri-latest-json version    # Show version
-```
-
-## Signature Verification (Optional)
-
-To enable compile-time verification of signatures (requires `tauri-cli` installed):
-
-```bash
-cargo install tauri-cli
-cargo run --features verify-signature -- <download_url_base> <notes>
 ```
 
 ## Platform Detection Logic
@@ -83,45 +95,24 @@ The tool prioritizes updater-compatible artifacts:
 - A configured `updater` plugin with a `pubkey`.
 - Built artifacts in `target/release/bundle` or `src-tauri/target/release/bundle`.
 
-## Specs
+## Development & Testing
 
-Behavior specs and acceptance criteria are documented in [SPEC.md](SPEC.md).
-
-## Testing
-
-Run the verification suite:
-
-```bash
-make verify
-make clippy
-```
-
-Optional real-app validation:
-
-```bash
-make smoke-real-app
-```
-
-By default this looks for a local `real-tauri-app/` directory (gitignored). You can point to another app path with `REAL_APP_DIR=/path/to/your-app`.
-The smoke script supports `tauri.conf.json` at either app root or `src-tauri/`, requires `plugins.updater.pubkey`, and bootstraps temporary test artifacts if your real app has no built installers yet.
-
-Manual equivalent:
+### Running Tests
 
 ```bash
 cargo test
-cargo test --all-features
-cargo check --features verify-signature
-./scripts/smoke-cli.sh
-./scripts/smoke-generate.sh
-./scripts/smoke-generate-current-conf.sh
-REAL_APP_DIR=/path/to/your-app ./scripts/smoke-real-tauri-app.sh
+make verify
 ```
 
-See release notes in [CHANGELOG.md](CHANGELOG.md).
+### Smoke Testing
 
-## Contributing
+Validate against a local real Tauri app:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Please also read our [Code of Conduct](CODE_OF_CONDUCT.md).
+```bash
+make smoke-real-app
+# Or specify a custom directory
+REAL_APP_DIR=/path/to/your-app ./scripts/smoke-real-tauri-app.sh
+```
 
 ## License
 

@@ -4,7 +4,20 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.4.0] - 2026-04-27
+
+### Added
+
+- Interactive mode: prompts for missing arguments (`download_url_base`, `notes`) if they are not provided via CLI.
+- Enhanced CLI UX with colorized output (success, warnings, errors).
+- Structured argument parsing and help messages using `clap`.
+- Improved error handling with context using `anyhow`.
+
+### Changed
+
+- Refactored core logic to use modern CLI crates (`clap`, `anyhow`, `colored`).
+- Improved automatic detection of version and public key from both project root and `src-tauri` directories.
+- Support for both Tauri 1.0 (`tauri.updater.pubkey`) and 2.0 (`plugins.updater.pubkey`) configuration paths.
 
 ## [0.3.1] - 2026-04-27
 

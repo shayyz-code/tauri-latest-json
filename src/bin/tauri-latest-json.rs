@@ -1,4 +1,8 @@
+use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
+use clap::Parser;
+use colored::*;
+use dialoguer::Input;
 use serde_json::{json, Value};
 #[cfg(feature = "verify-signature")]
 use std::process::Command;
@@ -9,82 +13,62 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const HELP_TEXT: &str = "\
-tauri-latest-json
+/// Generate multi-platform Tauri updater latest.json from built installers
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// The base URL where installers are hosted (e.g., https://github.com/user/repo/releases/download/v1.0.0)
+    download_url_base: Option<String>,
 
-Usage:
-  tauri-latest-json <download_url_base> <notes...>
-  tauri-latest-json help
-  tauri-latest-json version
-
-Options:
-  -h, --help       Show help
-  -V, --version    Show version
-";
-
-enum CliAction {
-    Help,
-    Version,
-    Generate { download_url: String, notes: String },
-}
-
-fn parse_args<I, S>(args: I) -> Result<CliAction, String>
-where
-    I: IntoIterator<Item = S>,
-    S: Into<String>,
-{
-    let parts: Vec<String> = args.into_iter().map(Into::into).collect();
-    if parts.is_empty() {
-        return Err("missing arguments".to_string());
-    }
-
-    match parts[0].as_str() {
-        "-h" | "--help" | "help" => Ok(CliAction::Help),
-        "-V" | "--version" | "version" => Ok(CliAction::Version),
-        _ => {
-            if parts.len() < 2 {
-                return Err("missing notes".to_string());
-            }
-            let download_url = parts[0].clone();
-            let notes = parts[1..].join(" ");
-            Ok(CliAction::Generate {
-                download_url,
-                notes,
-            })
-        }
-    }
+    /// Release notes for this update
+    #[arg(trailing_var_arg = true)]
+    notes: Vec<String>,
 }
 
 fn main() {
-    match parse_args(std::env::args().skip(1)) {
-        Ok(CliAction::Help) => {
-            print!("{HELP_TEXT}");
+    let args = Args::parse();
+
+    let download_url_base = match args.download_url_base {
+        Some(url) => url,
+        None => {
+            println!(
+                "{} Argument 'download_url_base' missing. Entering interactive mode...",
+                "info:".cyan()
+            );
+            Input::<String>::new()
+                .with_prompt("Enter the download URL base")
+                .interact_text()
+                .unwrap_or_else(|_| {
+                    eprintln!("{} Failed to read input", "error:".red().bold());
+                    std::process::exit(1);
+                })
         }
-        Ok(CliAction::Version) => {
-            println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-        }
-        Ok(CliAction::Generate {
-            download_url,
-            notes,
-        }) => match generate_latest_json_auto(&download_url, &notes) {
-            Ok(()) => println!("latest.json generated successfully"),
-            Err(e) => {
-                eprintln!("error: {e}");
+    };
+
+    let notes = if args.notes.is_empty() {
+        Input::<String>::new()
+            .with_prompt("Enter the release notes")
+            .interact_text()
+            .unwrap_or_else(|_| {
+                eprintln!("{} Failed to read input", "error:".red().bold());
                 std::process::exit(1);
-            }
-        },
-        Err(_) => {
-            eprintln!("{HELP_TEXT}");
-            std::process::exit(1);
-        }
+            })
+    } else {
+        args.notes.join(" ")
+    };
+
+    if let Err(e) = generate_latest_json_auto(&download_url_base, &notes) {
+        eprintln!("{} {}", "error:".red().bold(), e);
+        std::process::exit(1);
     }
 }
 
-fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Error>> {
+fn read_version_from_dir(base: &Path) -> Result<String> {
     let pkg_path = base.join("package.json");
     if pkg_path.exists() {
-        let pkg_str = fs::read_to_string(&pkg_path)?;
-        let pkg_json: serde_json::Value = serde_json::from_str(&pkg_str)?;
+        let pkg_str = fs::read_to_string(&pkg_path).context("failed to read package.json")?;
+        let pkg_json: serde_json::Value =
+            serde_json::from_str(&pkg_str).context("failed to parse package.json")?;
         if let Some(ver) = pkg_json["version"].as_str() {
             return Ok(ver.to_string());
         }
@@ -92,8 +76,10 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
 
     let tauri_conf_path = base.join("tauri.conf.json");
     if tauri_conf_path.exists() {
-        let conf_str = fs::read_to_string(&tauri_conf_path)?;
-        let conf_json: serde_json::Value = serde_json::from_str(&conf_str)?;
+        let conf_str =
+            fs::read_to_string(&tauri_conf_path).context("failed to read tauri.conf.json")?;
+        let conf_json: serde_json::Value =
+            serde_json::from_str(&conf_str).context("failed to parse tauri.conf.json")?;
         if let Some(ver) = conf_json["package"]["version"].as_str() {
             return Ok(ver.to_string());
         }
@@ -104,8 +90,10 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
 
     let src_tauri_conf_path = base.join("src-tauri").join("tauri.conf.json");
     if src_tauri_conf_path.exists() {
-        let conf_str = fs::read_to_string(&src_tauri_conf_path)?;
-        let conf_json: serde_json::Value = serde_json::from_str(&conf_str)?;
+        let conf_str = fs::read_to_string(&src_tauri_conf_path)
+            .context("failed to read src-tauri/tauri.conf.json")?;
+        let conf_json: serde_json::Value =
+            serde_json::from_str(&conf_str).context("failed to parse src-tauri/tauri.conf.json")?;
         if let Some(ver) = conf_json["package"]["version"].as_str() {
             return Ok(ver.to_string());
         }
@@ -116,8 +104,9 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
 
     let cargo_path = base.join("Cargo.toml");
     if cargo_path.exists() {
-        let cargo_str = fs::read_to_string(&cargo_path)?;
-        let value: toml::Value = toml::from_str(&cargo_str)?;
+        let cargo_str = fs::read_to_string(&cargo_path).context("failed to read Cargo.toml")?;
+        let value: toml::Value =
+            toml::from_str(&cargo_str).context("failed to parse Cargo.toml")?;
         if let Some(pkg) = value.get("package") {
             if let Some(ver) = pkg.get("version").and_then(|v| v.as_str()) {
                 if !ver.is_empty() {
@@ -129,8 +118,10 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
 
     let src_tauri_cargo_path = base.join("src-tauri").join("Cargo.toml");
     if src_tauri_cargo_path.exists() {
-        let cargo_str = fs::read_to_string(&src_tauri_cargo_path)?;
-        let value: toml::Value = toml::from_str(&cargo_str)?;
+        let cargo_str = fs::read_to_string(&src_tauri_cargo_path)
+            .context("failed to read src-tauri/Cargo.toml")?;
+        let value: toml::Value =
+            toml::from_str(&cargo_str).context("failed to parse src-tauri/Cargo.toml")?;
         if let Some(pkg) = value.get("package") {
             if let Some(ver) = pkg.get("version").and_then(|v| v.as_str()) {
                 if !ver.is_empty() {
@@ -140,13 +131,12 @@ fn read_version_from_dir(base: &Path) -> Result<String, Box<dyn std::error::Erro
         }
     }
 
-    Err("Could not find version in package.json, Cargo.toml, or src-tauri/Cargo.toml".into())
+    Err(anyhow!(
+        "Could not find version in package.json, Cargo.toml, or tauri.conf.json"
+    ))
 }
 
-fn generate_latest_json_auto(
-    download_url_base: &str,
-    notes: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn generate_latest_json_auto(download_url_base: &str, notes: &str) -> Result<()> {
     let bundle_dir = detect_bundle_dir()?;
     let tauri_conf_path = detect_tauri_conf_path()?;
     let public_key = read_public_key(&tauri_conf_path)?;
@@ -158,8 +148,8 @@ fn generate_latest_json(
     public_key: &str,
     download_url_base: &str,
     notes: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let project_dir = std::env::current_dir()?;
+) -> Result<()> {
+    let project_dir = std::env::current_dir().context("failed to get current directory")?;
     generate_latest_json_for_project(
         bundle_dir,
         public_key,
@@ -175,12 +165,13 @@ fn generate_latest_json_for_project(
     download_url_base: &str,
     notes: &str,
     project_dir: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     let version = read_version_from_dir(project_dir)?;
+    println!("{} detected version: {}", "info:".cyan(), version.bold());
 
     let installers = find_installers_by_platform(bundle_dir)?;
     if installers.is_empty() {
-        return Err("No installers found".into());
+        return Err(anyhow!("No installers found in {}", bundle_dir.display()));
     }
 
     let signature_paths = find_signatures(bundle_dir)?;
@@ -198,19 +189,21 @@ fn generate_latest_json_for_project(
 
         if sig_path.is_none() {
             if installer_name.ends_with(".dmg") {
-                eprintln!("Warning: No signature found for DMG on platform {}. Tauri doesn't generate .sig files for DMG, so it will be skipped.", platform_key);
+                eprintln!("{} No signature found for DMG on platform {}. Tauri doesn't generate .sig files for DMG, so it will be skipped.", "warning:".yellow().bold(), platform_key.bold());
+                continue;
             } else {
-                eprintln!(
-                    "Warning: No signature found for platform {}. Skipping.",
-                    platform_key
-                );
+                return Err(anyhow!("Signature not found for platform {}", platform_key));
             }
-            continue;
         }
 
-        let mut f_sig = std::fs::File::open(sig_path.unwrap())?;
+        let mut f_sig = std::fs::File::open(sig_path.unwrap()).context(format!(
+            "failed to open signature file for {}",
+            platform_key
+        ))?;
         let mut signature = String::new();
-        f_sig.read_to_string(&mut signature)?;
+        f_sig
+            .read_to_string(&mut signature)
+            .context(format!("failed to read signature for {}", platform_key))?;
 
         #[cfg(feature = "verify-signature")]
         {
@@ -221,6 +214,13 @@ fn generate_latest_json_for_project(
             let _ = &public_key;
         }
 
+        println!(
+            "{} matched platform {}: {}",
+            "success:".green(),
+            platform_key.bold(),
+            installer_name.dimmed()
+        );
+
         platforms.insert(
             platform_key,
             json!({
@@ -228,6 +228,12 @@ fn generate_latest_json_for_project(
                 "url": format!("{}/{}", download_url_base, installer_name)
             }),
         );
+    }
+
+    if platforms.is_empty() {
+        return Err(anyhow!(
+            "No platforms with valid signatures found. Cannot generate latest.json."
+        ));
     }
 
     let latest_json = json!({
@@ -238,14 +244,20 @@ fn generate_latest_json_for_project(
     });
 
     let output_path = project_dir.join("latest.json");
-    fs::write(&output_path, serde_json::to_string_pretty(&latest_json)?)?;
-    println!("latest.json generated at {}", output_path.display());
+    fs::write(&output_path, serde_json::to_string_pretty(&latest_json)?)
+        .context("failed to write latest.json")?;
+    println!(
+        "\n{} generated at {}",
+        "✔".green().bold(),
+        output_path.display().to_string().bold()
+    );
     Ok(())
 }
 
-fn read_public_key(conf_path: &Path) -> Result<String, Box<dyn std::error::Error>> {
-    let conf_str = fs::read_to_string(conf_path)?;
-    let conf_json: Value = serde_json::from_str(&conf_str)?;
+fn read_public_key(conf_path: &Path) -> Result<String> {
+    let conf_str = fs::read_to_string(conf_path).context("failed to read tauri.conf.json")?;
+    let conf_json: Value =
+        serde_json::from_str(&conf_str).context("failed to parse tauri.conf.json")?;
 
     // Try Tauri 2.0 path: plugins > updater > pubkey
     if let Some(pubkey) = conf_json["plugins"]["updater"]["pubkey"].as_str() {
@@ -257,11 +269,11 @@ fn read_public_key(conf_path: &Path) -> Result<String, Box<dyn std::error::Error
         return Ok(pubkey.to_string());
     }
 
-    Err("No public key found in tauri.conf.json (checked plugins.updater.pubkey and tauri.updater.pubkey)".into())
+    Err(anyhow!("No public key found in tauri.conf.json (checked plugins.updater.pubkey and tauri.updater.pubkey)"))
 }
 
-fn detect_bundle_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let current_dir = std::env::current_dir()?;
+fn detect_bundle_dir() -> Result<PathBuf> {
+    let current_dir = std::env::current_dir().context("failed to get current directory")?;
     let candidates = [
         current_dir.join("target").join("release").join("bundle"),
         current_dir
@@ -289,13 +301,15 @@ fn detect_bundle_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
         }
     }
 
-    Err("Could not detect bundle dir. Build your Tauri app to produce target/*/bundle.".into())
+    Err(anyhow!(
+        "Could not detect bundle dir. Build your Tauri app to produce target/*/bundle."
+    ))
 }
 
-fn find_installers(dir: &Path) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+fn find_installers(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut results = Vec::new();
     for entry in walkdir::WalkDir::new(dir) {
-        let entry = entry?;
+        let entry = entry.context("failed to read directory entry")?;
         if entry.file_type().is_file() {
             let fname = entry.file_name().to_string_lossy();
             if fname.ends_with(".msi")
@@ -351,9 +365,7 @@ fn installer_priority(platform: &str, filename: &str) -> u8 {
     }
 }
 
-fn find_installers_by_platform(
-    dir: &Path,
-) -> Result<HashMap<String, PathBuf>, Box<dyn std::error::Error>> {
+fn find_installers_by_platform(dir: &Path) -> Result<HashMap<String, PathBuf>> {
     let installers = find_installers(dir)?;
     let mut selected: HashMap<String, (PathBuf, u8)> = HashMap::new();
 
@@ -378,25 +390,23 @@ fn find_installers_by_platform(
     Ok(selected.into_iter().map(|(k, (v, _))| (k, v)).collect())
 }
 
-fn find_signatures(
-    dir: &Path,
-) -> Result<HashMap<&'static str, PathBuf>, Box<dyn std::error::Error>> {
+fn find_signatures(dir: &Path) -> Result<HashMap<String, PathBuf>> {
     let mut results = HashMap::new();
     for entry in walkdir::WalkDir::new(dir) {
-        let entry = entry?;
+        let entry = entry.context("failed to read directory entry")?;
         if entry.file_type().is_file() {
             let fname = entry.file_name().to_string_lossy();
             if fname.ends_with(".sig") {
                 let platform = detect_platform_key(&fname.replace(".sig", ""));
-                results.insert(platform, entry.path().to_path_buf());
+                results.insert(platform.to_string(), entry.path().to_path_buf());
             }
         }
     }
     Ok(results)
 }
 
-fn detect_tauri_conf_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let current_dir = std::env::current_dir()?;
+fn detect_tauri_conf_path() -> Result<PathBuf> {
+    let current_dir = std::env::current_dir().context("failed to get current directory")?;
     let candidates = [
         current_dir.join("tauri.conf.json"),
         current_dir.join("src-tauri").join("tauri.conf.json"),
@@ -410,18 +420,16 @@ fn detect_tauri_conf_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
             return Ok(c);
         }
     }
-    Err("Could not find tauri.conf.json. Provide it at project root or src-tauri/.".into())
+    Err(anyhow!(
+        "Could not find tauri.conf.json. Provide it at project root or src-tauri/."
+    ))
 }
 
 #[cfg(feature = "verify-signature")]
-fn verify_signature(
-    installer: &Path,
-    signature: &str,
-    public_key: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn verify_signature(installer: &Path, signature: &str, public_key: &str) -> Result<()> {
     let installer_str = installer
         .to_str()
-        .ok_or("Installer path is not valid UTF-8")?;
+        .ok_or_else(|| anyhow!("Installer path is not valid UTF-8"))?;
     let output = Command::new("tauri")
         .args([
             "signer",
@@ -431,15 +439,15 @@ fn verify_signature(
             installer_str,
             signature,
         ])
-        .output()?;
+        .output()
+        .context("failed to execute tauri signer verify")?;
 
     if !output.status.success() {
-        return Err(format!(
+        return Err(anyhow!(
             "Signature verification failed for {:?}: {}",
             installer,
             String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
+        ));
     }
 
     Ok(())
@@ -530,34 +538,27 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_args_help_and_version() {
-        assert!(matches!(parse_args(vec!["help"]), Ok(CliAction::Help)));
-        assert!(matches!(parse_args(vec!["--help"]), Ok(CliAction::Help)));
-        assert!(matches!(parse_args(vec!["-h"]), Ok(CliAction::Help)));
-        assert!(matches!(
-            parse_args(vec!["version"]),
-            Ok(CliAction::Version)
-        ));
-        assert!(matches!(
-            parse_args(vec!["--version"]),
-            Ok(CliAction::Version)
-        ));
-        assert!(matches!(parse_args(vec!["-V"]), Ok(CliAction::Version)));
-    }
+    fn test_args_parsing() {
+        // Test valid arguments
+        let args = Args::try_parse_from(vec![
+            "tauri-latest-json",
+            "https://example.com",
+            "Release",
+            "notes",
+        ])
+        .unwrap();
+        assert_eq!(
+            args.download_url_base,
+            Some("https://example.com".to_string())
+        );
+        assert_eq!(args.notes, vec!["Release", "notes"]);
 
-    #[test]
-    fn test_parse_args_generate() {
-        let parsed = parse_args(vec!["https://example.com", "Initial", "release"]).unwrap();
-        match parsed {
-            CliAction::Generate {
-                download_url,
-                notes,
-            } => {
-                assert_eq!(download_url, "https://example.com");
-                assert_eq!(notes, "Initial release");
-            }
-            _ => panic!("expected generate action"),
-        }
+        // Test missing arguments (now allowed for interactive fallback)
+        let result = Args::try_parse_from(vec!["tauri-latest-json"]);
+        assert!(result.is_ok());
+        let args = result.unwrap();
+        assert!(args.download_url_base.is_none());
+        assert!(args.notes.is_empty());
     }
 
     #[test]
