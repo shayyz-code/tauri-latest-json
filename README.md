@@ -61,7 +61,7 @@ tauri-latest-json <download_url_base> <notes...>
 **Example:**
 
 ```bash
-tauri-latest-json https://github.com/user/repo/releases/download/v0.4.2 "Fixed security vulnerabilities and improved performance."
+tauri-latest-json https://github.com/user/repo/releases/download/v0.4.4 "Fixed security vulnerabilities and improved performance."
 ```
 
 ### 3. CI-safe Non-interactive Usage
@@ -69,7 +69,7 @@ tauri-latest-json https://github.com/user/repo/releases/download/v0.4.2 "Fixed s
 Use fully non-interactive arguments in CI/CD so jobs fail fast instead of waiting for prompts:
 
 ```bash
-tauri-latest-json "https://github.com/user/repo/releases/download/v0.4.2" "Release notes from CI"
+tauri-latest-json "https://github.com/user/repo/releases/download/v0.4.4" "Release notes from CI"
 ```
 
 ### 4. Root vs src-tauri
