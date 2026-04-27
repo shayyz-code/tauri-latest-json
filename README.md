@@ -7,6 +7,9 @@
     <a href="https://docs.rs/tauri-latest-json">
         <img src="https://docs.rs/tauri-latest-json/badge.svg" alt="docs.rs" />
     </a>
+    <a href="CONTRIBUTING.md">
+        <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
+    </a>
     <a href="LICENSE">
         <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
     </a>
