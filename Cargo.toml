@@ -1,6 +1,6 @@
 [package]
 name = "tauri-latest-json"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Aung Min Khant <aungminkhant.shay@gmail.com>"]
 edition = "2021"
 description = "Generate multi-platform Tauri updater latest.json from built installers"
@@ -10,6 +10,10 @@ readme = "README.md"
 keywords = ["tauri", "updater"]
 categories = ["command-line-utilities", "development-tools"]
 exclude = [".env", ".env.*", "scripts/", "Makefile", "SPEC.md", "real-tauri-app/"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -22,6 +26,10 @@ anyhow = "1.0"
 colored = "2.1"
 dialoguer = "0.11"
 console = "0.15"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
 
 [features]
 default = []

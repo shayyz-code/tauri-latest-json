@@ -48,6 +48,8 @@ Just run the command from your Tauri project root. It will prompt you for the do
 tauri-latest-json
 ```
 
+You can also run from `src-tauri` and the tool will still auto-detect config and bundle paths.
+
 ### 2. Command Line Arguments
 
 Provide the download URL base and release notes directly:
@@ -59,10 +61,31 @@ tauri-latest-json <download_url_base> <notes...>
 **Example:**
 
 ```bash
-tauri-latest-json https://github.com/user/repo/releases/download/v0.4.1 "Fixed security vulnerabilities and improved performance."
+tauri-latest-json https://github.com/user/repo/releases/download/v0.4.2 "Fixed security vulnerabilities and improved performance."
 ```
 
-### 3. What happens next?
+### 3. CI-safe Non-interactive Usage
+
+Use fully non-interactive arguments in CI/CD so jobs fail fast instead of waiting for prompts:
+
+```bash
+tauri-latest-json "https://github.com/user/repo/releases/download/v0.4.2" "Release notes from CI"
+```
+
+### 4. Root vs src-tauri
+
+Both run modes are supported:
+
+```bash
+# From project root
+tauri-latest-json "https://example.com/downloads" "release notes"
+
+# From src-tauri
+cd src-tauri
+tauri-latest-json "https://example.com/downloads" "release notes"
+```
+
+### 5. What happens next?
 
 The tool will:
 
@@ -116,6 +139,13 @@ make smoke-real-app
 # Or specify a custom directory
 REAL_APP_DIR=/path/to/your-app ./scripts/smoke-real-tauri-app.sh
 ```
+
+## Troubleshooting
+
+- `Could not detect bundle dir`: Build your app first so `target/*/bundle` exists.
+- `No public key found in tauri.conf.json`: Ensure updater pubkey is set in `plugins.updater.pubkey` (Tauri 2) or `tauri.updater.pubkey` (Tauri 1).
+- `Signature not found for platform ...`: Ensure `.sig` exists for updater artifacts. `.dmg` is expected to be skipped.
+- `Argument '...' missing and not in a terminal`: Provide full CLI args in CI/non-TTY environments.
 
 ## License
 

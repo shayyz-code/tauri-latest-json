@@ -4,12 +4,24 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.4.1] - 2026-04-27
+## [0.4.2] - 2026-04-27
+
+### Added
+
+- [Internal] Added a library target and documented public API entrypoints to support docs.rs pages.
+- [Testing] Added CLI integration tests for `--help`, `help`, `--version`, `version`, and non-TTY missing-argument failures.
+
+### Changed
+
+- [Behavior] Refactored core generation logic from bin to library while preserving CLI behavior.
+- [Docs] Expanded README with CI-safe usage, root/`src-tauri` examples, and troubleshooting guidance.
+- [CI] Added `cargo publish --dry-run` to CI checks.
+- [Docs.rs] Enabled docs.rs metadata to build with all features.
 
 ### Fixed
 
-- CI/Smoke test failures by adding TTY detection and handling `help`/`version` positional arguments.
-- Added `console` dependency for terminal detection.
+- [Behavior] CI/smoke test failures by adding TTY detection and handling `help`/`version` positional arguments.
+- [Dependency] Added `console` dependency for terminal detection.
 
 ## [0.4.0] - 2026-04-27
 

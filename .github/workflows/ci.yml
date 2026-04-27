@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - "**"
+    tags:
+      - "v*.*.*"
   pull_request:
 
 jobs:
@@ -30,3 +32,6 @@ jobs:
 
       - name: Run verification suite
         run: make verify
+
+      - name: Check publish package (dry run)
+        run: cargo publish --dry-run
