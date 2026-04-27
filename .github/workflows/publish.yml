@@ -1,13 +1,12 @@
 name: Publish crate
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
+    tags:
+      - "v*.*.*"
 
 jobs:
-  publish:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  verify:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -15,9 +14,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -25,20 +21,49 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Resolve release tag from CI commit
-        id: release_tag
+      - name: Ensure tag matches Cargo.toml version
+        shell: bash
         run: |
-          git fetch --tags --force
-          TAG="$(git tag --points-at "${{ github.event.workflow_run.head_sha }}" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          if [ -z "$TAG" ]; then
-            echo "No release tag found for this CI run SHA; skipping publish."
-          else
-            echo "Resolved release tag: $TAG"
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must be semver-prefixed like v1.2.3, got: $TAG"
+            exit 1
           fi
+          TAG_VERSION="${TAG#v}"
+          CARGO_VERSION="$(sed -nE 's/^version = "([^"]+)"$/\1/p' Cargo.toml | head -n1)"
+          echo "Tag version:   $TAG_VERSION"
+          echo "Cargo version: $CARGO_VERSION"
+          test "$TAG_VERSION" = "$CARGO_VERSION"
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run verification suite
+        run: make verify
+
+      - name: Check publish package (dry run)
+        run: cargo publish --dry-run
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Publish to crates.io
-        if: ${{ steps.release_tag.outputs.tag != '' }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish --verbose
