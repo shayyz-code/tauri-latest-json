@@ -8,7 +8,7 @@ help:
 	@echo "  make test            - Run verification test suite"
 	@echo "  make smoke-cli       - Run CLI smoke checks"
 	@echo "  make smoke-generate  - Run end-to-end generation smoke check"
-	@echo "  make smoke-generate-current-conf - Run smoke check using repo tauri.conf.json"
+	@echo "  make smoke-generate-current-conf - Run smoke check using repo tauri.conf.json (or fallback in CI)"
 	@echo "  make verify          - Run full local verification (fmt + tests + all smokes)"
 	@echo "  make ci              - Alias of verify"
 	@echo "  make check           - Cargo check with verify-signature feature"

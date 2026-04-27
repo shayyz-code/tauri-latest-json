@@ -34,5 +34,5 @@ jobs:
       - name: Run generation smoke check
         run: bash scripts/smoke-generate.sh
 
-      - name: Run generation smoke check with current tauri.conf.json
+      - name: Run generation smoke check with repo/fallback tauri.conf.json
         run: bash scripts/smoke-generate-current-conf.sh
