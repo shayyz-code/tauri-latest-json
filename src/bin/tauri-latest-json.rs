@@ -28,9 +28,34 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
+    // Handle 'help' and 'version' as positional arguments for backward compatibility
+    if let Some(ref first_arg) = args.download_url_base {
+        match first_arg.as_str() {
+            "help" => {
+                use clap::CommandFactory;
+                Args::command().print_help().unwrap();
+                return;
+            }
+            "version" => {
+                println!("tauri-latest-json {}", env!("CARGO_PKG_VERSION"));
+                return;
+            }
+            _ => {}
+        }
+    }
+
+    let is_tty = console::Term::stdout().is_term();
+
     let download_url_base = match args.download_url_base {
         Some(url) => url,
         None => {
+            if !is_tty {
+                eprintln!(
+                    "{} Argument 'download_url_base' missing and not in a terminal.",
+                    "error:".red().bold()
+                );
+                std::process::exit(1);
+            }
             println!(
                 "{} Argument 'download_url_base' missing. Entering interactive mode...",
                 "info:".cyan()
@@ -46,6 +71,13 @@ fn main() {
     };
 
     let notes = if args.notes.is_empty() {
+        if !is_tty {
+            eprintln!(
+                "{} Argument 'notes' missing and not in a terminal.",
+                "error:".red().bold()
+            );
+            std::process::exit(1);
+        }
         Input::<String>::new()
             .with_prompt("Enter the release notes")
             .interact_text()

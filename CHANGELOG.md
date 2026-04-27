@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] - 2026-04-27
+
+### Fixed
+
+- CI/Smoke test failures by adding TTY detection and handling `help`/`version` positional arguments.
+- Added `console` dependency for terminal detection.
+
 ## [0.4.0] - 2026-04-27
 
 ### Added

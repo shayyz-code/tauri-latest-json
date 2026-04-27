@@ -56,7 +56,7 @@ tauri-latest-json <download_url_base> <notes...>
 **Example:**
 
 ```bash
-tauri-latest-json https://github.com/user/repo/releases/download/v0.4.0 "Fixed security vulnerabilities and improved performance."
+tauri-latest-json https://github.com/user/repo/releases/download/v0.4.1 "Fixed security vulnerabilities and improved performance."
 ```
 
 ### 3. What happens next?
