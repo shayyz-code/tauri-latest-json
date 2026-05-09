@@ -1,21 +1,11 @@
 <h1 align="center">tauri-latest-json</h1>
 
 <p align="center">
-    <a href="https://crates.io/crates/tauri-latest-json">
-        <img src="https://img.shields.io/crates/v/tauri-latest-json.svg" alt="Crates.io" />
-    </a>
-    <a href="https://docs.rs/tauri-latest-json">
-        <img src="https://docs.rs/tauri-latest-json/badge.svg" alt="docs.rs" />
-    </a>
-    <a href="CONTRIBUTING.md">
-        <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
-    </a>
-    <a href="LICENSE">
-        <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
-    </a>
-    <a href="https://crates.io/crates/tauri-latest-json">
-        <img src="https://img.shields.io/crates/d/tauri-latest-json.svg" alt="Crates.io" />
-    </a>
+    <a href="https://crates.io/crates/tauri-latest-json"><img src="https://img.shields.io/crates/v/tauri-latest-json.svg" alt="Crates.io" /></a>
+    <a href="https://docs.rs/tauri-latest-json"><img src="https://docs.rs/tauri-latest-json/badge.svg" alt="docs.rs" /></a>
+    <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+    <a href="https://crates.io/crates/tauri-latest-json"><img src="https://img.shields.io/crates/d/tauri-latest-json.svg" alt="Crates.io" /></a>
 </p>
 
 <p align="center">
